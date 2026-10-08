@@ -240,11 +240,55 @@ header {
     opacity: 1;
 }
 
+/* SEGUNDO MOTIVO */
+.group-title-second {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.3;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #FFF7ED;
+    border: 1px dashed #FED7AA;
+    font-family: inherit;
+    text-align: left;
+    transition: 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 6px;
+}
+
+.group-title-second:active {
+    transform: scale(0.98);
+}
+
+.group-title-second.copied {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+    border-style: solid;
+}
+
+.group-title-second .copy-icon {
+    font-size: 12px;
+    opacity: 0.6;
+    margin-left: auto;
+}
+
+.group-title-second.copied .copy-icon {
+    opacity: 1;
+}
+
 /* AÇÕES DO GRUPO */
 .group-actions-top {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     margin-bottom: 10px;
 }
@@ -667,8 +711,13 @@ header {
         <h2 id="modalTitle">Adicionar Códigos</h2>
         
         <div class="form-group">
-            <label>Motivo</label>
+            <label>Motivo (linha 1)</label>
             <textarea id="inputMotivo" placeholder="Ex: MOTORISTA NÃO REALIZOU VIAGEM"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Motivo (linha 2 - opcional)</label>
+            <textarea id="inputMotivo2" placeholder="Ex: LARGADA NÃO REALIZADA"></textarea>
         </div>
         
         <div class="section-label">🚌 Dados do Veículo (opcional)</div>
@@ -730,6 +779,7 @@ const DEFAULT_DATA = [
     {
         id: "g1",
         motivo: "MOTORISTA NÃO REALIZOU VIAGEM",
+        motivo2: "LARGADA NÃO REALIZADA",
         bloco: "12",
         carro: "4587",
         linha: "305",
@@ -739,6 +789,7 @@ const DEFAULT_DATA = [
     {
         id: "g2",
         motivo: "LARGADA NÃO REALIZADA",
+        motivo2: "",
         bloco: "08",
         carro: "3021",
         linha: "412",
@@ -772,7 +823,7 @@ function escapeHtml(text) {
    ============================ */
 function loadData() {
     try {
-        const saved = localStorage.getItem("protheus_v5");
+        const saved = localStorage.getItem("protheus_v6");
         if (saved) {
             groups = JSON.parse(saved);
         } else {
@@ -785,7 +836,7 @@ function loadData() {
 }
 
 function saveData() {
-    localStorage.setItem("protheus_v5", JSON.stringify(groups));
+    localStorage.setItem("protheus_v6", JSON.stringify(groups));
 }
 
 /* ============================
@@ -798,6 +849,7 @@ function render(filter = "") {
     const filtered = groups.filter(g => {
         if (!term) return true;
         if (g.motivo.toLowerCase().includes(term)) return true;
+        if ((g.motivo2 || "").toLowerCase().includes(term)) return true;
         if ((g.bloco || "").toLowerCase().includes(term)) return true;
         if ((g.carro || "").toLowerCase().includes(term)) return true;
         if ((g.linha || "").toLowerCase().includes(term)) return true;
@@ -837,13 +889,23 @@ function render(filter = "") {
             ? `<div class="group-info">${infoPills.join("")}</div>` 
             : "";
 
+        const motivo2Html = g.motivo2 
+            ? `<button class="group-title-second" data-action="copy-motivo2" data-motivo2="${escapeHtml(g.motivo2)}">
+                   <span>${escapeHtml(g.motivo2)}</span>
+                   <span class="copy-icon">📋</span>
+               </button>` 
+            : "";
+
         return `
             <div class="group" data-group-id="${g.id}">
                 <div class="group-actions-top">
-                    <button class="group-title" data-action="copy-motivo" data-motivo="${escapeHtml(g.motivo)}">
-                        <span>${escapeHtml(g.motivo)}</span>
-                        <span class="copy-icon">📋</span>
-                    </button>
+                    <div style="flex:1; min-width:0;">
+                        <button class="group-title" data-action="copy-motivo" data-motivo="${escapeHtml(g.motivo)}">
+                            <span>${escapeHtml(g.motivo)}</span>
+                            <span class="copy-icon">📋</span>
+                        </button>
+                        ${motivo2Html}
+                    </div>
                     <div class="group-actions">
                         <button class="edit" data-action="edit" data-id="${g.id}" title="Editar">✏️</button>
                         <button class="delete" data-action="delete" data-id="${g.id}" title="Excluir">🗑️</button>
@@ -871,6 +933,8 @@ document.getElementById("container").addEventListener("click", (e) => {
         copyCode(btn, btn.dataset.code);
     } else if (action === "copy-motivo") {
         copyMotivo(btn, btn.dataset.motivo);
+    } else if (action === "copy-motivo2") {
+        copyMotivo2(btn, btn.dataset.motivo2);
     } else if (action === "copy-info") {
         copyInfo(btn, btn.dataset.value);
     } else if (action === "edit") {
@@ -909,6 +973,24 @@ async function copyMotivo(btn, motivo) {
     btn.innerHTML = `<span>✓ Motivo copiado!</span>`;
 
     showToast(`Motivo copiado!`, "success");
+
+    setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.innerHTML = originalHtml;
+    }, 1200);
+}
+
+/* ============================
+   COPIAR MOTIVO 2
+   ============================ */
+async function copyMotivo2(btn, motivo2) {
+    await copyToClipboard(motivo2);
+
+    const originalHtml = btn.innerHTML;
+    btn.classList.add("copied");
+    btn.innerHTML = `<span>✓ Motivo copiado!</span>`;
+
+    showToast(`Motivo 2 copiado!`, "success");
 
     setTimeout(() => {
         btn.classList.remove("copied");
@@ -959,6 +1041,7 @@ function openAddModal() {
     editingId = null;
     document.getElementById("modalTitle").textContent = "➕ Adicionar Códigos";
     document.getElementById("inputMotivo").value = "";
+    document.getElementById("inputMotivo2").value = "";
     document.getElementById("inputBloco").value = "";
     document.getElementById("inputCarro").value = "";
     document.getElementById("inputLinha").value = "";
@@ -978,6 +1061,7 @@ function openEditModal(id) {
     editingId = id;
     document.getElementById("modalTitle").textContent = "✏️ Editar Códigos";
     document.getElementById("inputMotivo").value = g.motivo;
+    document.getElementById("inputMotivo2").value = g.motivo2 || "";
     document.getElementById("inputBloco").value = g.bloco || "";
     document.getElementById("inputCarro").value = g.carro || "";
     document.getElementById("inputLinha").value = g.linha || "";
@@ -993,6 +1077,7 @@ function closeModal() {
 
 function saveGroup() {
     const motivo = document.getElementById("inputMotivo").value.trim();
+    const motivo2 = document.getElementById("inputMotivo2").value.trim();
     const bloco = document.getElementById("inputBloco").value.trim();
     const carro = document.getElementById("inputCarro").value.trim();
     const linha = document.getElementById("inputLinha").value.trim();
@@ -1024,6 +1109,7 @@ function saveGroup() {
         const g = groups.find(x => x.id === editingId);
         if (g) {
             g.motivo = motivo;
+            g.motivo2 = motivo2;
             g.bloco = bloco;
             g.carro = carro;
             g.linha = linha;
@@ -1038,6 +1124,7 @@ function saveGroup() {
         groups.push({
             id: uid(),
             motivo: motivo,
+            motivo2: motivo2,
             bloco: bloco,
             carro: carro,
             linha: linha,
@@ -1136,6 +1223,7 @@ document.getElementById("importFile").addEventListener("change", (e) => {
             const valid = data.filter(g => g.motivo && Array.isArray(g.codigos)).map(g => ({
                 id: g.id || uid(),
                 motivo: g.motivo,
+                motivo2: g.motivo2 || "",
                 bloco: g.bloco || "",
                 carro: g.carro || "",
                 linha: g.linha || "",
